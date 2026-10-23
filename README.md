@@ -69,3 +69,27 @@ uci commit mentohust
 调试：`logread -e mentohust`、`ifstatus wan6`、`ip -6 addr`、
 `ip -6 route`、`tcpdump -ni eth0 'icmp6 or udp port 546 or udp port 547'`。
 是否可获得 IPv6 还取决于学校接入交换机、RA/DHCPv6 服务和上游网络策略。
+
+
+## 手动构建 OpenWrt APK（25.12）
+
+OpenWrt 25.12 使用 `apk` 包管理器，不能把旧的 `.ipk` 直接改名为
+`.apk`。仓库提供独立的 [Build OpenWrt APK](https://github.com/stevessr/luci-app-mentohust/actions/workflows/build-apk.yml)
+工作流，使用官方 `openwrt/gh-action-sdk` 编译原生 APK，**不会覆盖已有的 IPK 发布工作流**。
+
+1. 打开仓库的 **Actions → Build OpenWrt APK → Run workflow**。
+2. 选择 OpenWrt SDK 版本（默认 `25.12.6`）和目标架构（默认 `x86_64`）。
+   `all` 会对七种常见架构分别构建，可能占用较长时间。
+3. 构建完成后，从该运行页面的 **Artifacts** 下载与架构、版本对应的压缩包。
+   每个成功的构建包含 `mentohust-*.apk`、`luci-app-mentohust-*.apk`、
+   `SHA256SUMS` 和 `BUILD-INFO.txt`。
+
+下载的 APK 是 CI 生成的单机安装包，**不是已签名的软件源**，不会自动上传 GitHub Release。
+安装前确认与路由器运行的 OpenWrt 版本及 `apk --print-arch` 匹配。在路由器上：
+
+```sh
+apk add --allow-untrusted ./mentohust-*.apk ./luci-app-mentohust-*.apk
+```
+
+缺少的运行依赖需要从设备配置的软件源获取。OpenWrt 24.10 及更早的
+`opkg` 固件仍需使用 IPK，不能安装 25.12 的 APK。
