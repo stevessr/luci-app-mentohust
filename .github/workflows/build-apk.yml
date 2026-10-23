@@ -1,0 +1,144 @@
+name: Build OpenWrt APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      release:
+        description: OpenWrt 25.12 SDK release (APK package manager)
+        type: choice
+        required: true
+        default: '25.12.6'
+        options:
+          - '25.12.6'
+          - '25.12.5'
+      architecture:
+        description: Target package architecture (all builds seven common targets)
+        type: choice
+        required: true
+        default: x86_64
+        options:
+          - x86_64
+          - aarch64_generic
+          - aarch64_cortex-a53
+          - aarch64_cortex-a72
+          - arm_cortex-a7_neon-vfpv4
+          - mips_24kc
+          - mipsel_24kc
+          - all
+
+  # Validate changes to this build recipe with one x86_64 smoke build.
+  pull_request:
+    paths:
+      - '.github/workflows/build-apk.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      arches: ${{ steps.params.outputs.arches }}
+      release: ${{ steps.params.outputs.release }}
+    steps:
+      - name: Validate manual build parameters
+        id: params
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REQUESTED_ARCH: ${{ inputs.architecture || 'x86_64' }}
+          REQUESTED_RELEASE: ${{ inputs.release || '25.12.6' }}
+        run: |
+          set -euo pipefail
+          if [[ "$EVENT_NAME" == 'pull_request' ]]; then
+            REQUESTED_ARCH=x86_64
+            REQUESTED_RELEASE=25.12.6
+          fi
+          case "$REQUESTED_RELEASE" in
+            25.12.6|25.12.5) ;;
+            *) echo "::error::Unsupported OpenWrt SDK release: $REQUESTED_RELEASE"; exit 1 ;;
+          esac
+          case "$REQUESTED_ARCH" in
+            all)
+              arches='["x86_64","aarch64_generic","aarch64_cortex-a53","aarch64_cortex-a72","arm_cortex-a7_neon-vfpv4","mips_24kc","mipsel_24kc"]'
+              ;;
+            x86_64|aarch64_generic|aarch64_cortex-a53|aarch64_cortex-a72|arm_cortex-a7_neon-vfpv4|mips_24kc|mipsel_24kc)
+              arches="[\"$REQUESTED_ARCH\"]"
+              ;;
+            *) echo "::error::Unsupported package architecture: $REQUESTED_ARCH"; exit 1 ;;
+          esac
+          printf 'arches=%s\n' "$arches" >> "$GITHUB_OUTPUT"
+          printf 'release=%s\n' "$REQUESTED_RELEASE" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: prepare
+    name: APK ${{ matrix.arch }} / ${{ needs.prepare.outputs.release }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: ${{ fromJSON(needs.prepare.outputs.arches) }}
+    steps:
+      - name: Checkout MentoHUST feed
+        uses: actions/checkout@v4
+
+      - name: Build APK using official OpenWrt SDK
+        uses: openwrt/gh-action-sdk@v8
+        env:
+          ARCH: ${{ matrix.arch }}-${{ needs.prepare.outputs.release }}
+          FEEDNAME: packages_ci
+          PACKAGES: mentohust luci-app-mentohust
+          INDEX: '0'
+          NO_REFRESH_CHECK: '1'
+          NO_SHFMT_CHECK: '1'
+          BUILD_LOG: '1'
+          V: 's'
+
+      - name: Validate and checksum built APK packages
+        shell: bash
+        env:
+          PACKAGE_ARCH: ${{ matrix.arch }}
+          SDK_RELEASE: ${{ needs.prepare.outputs.release }}
+          SOURCE_COMMIT: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          source_dir="bin/packages/$PACKAGE_ARCH/packages_ci"
+          if [[ ! -d "$source_dir" ]]; then
+            echo "::error::OpenWrt SDK did not produce a package feed at $source_dir"
+            find bin -type f -name '*.apk' -print || true
+            exit 1
+          fi
+          mkdir -p dist
+          for pkg in mentohust luci-app-mentohust; do
+            mapfile -t matches < <(find "$source_dir" -maxdepth 1 -type f -name "$pkg-*.apk" -print)
+            if [[ "${#matches[@]}" -ne 1 ]]; then
+              echo "::error::Expected one $pkg APK, got ${#matches[@]} in $source_dir"
+              exit 1
+            fi
+            cp -- "${matches[0]}" dist/
+          done
+          (
+            cd dist
+            sha256sum -- ./*.apk > SHA256SUMS
+          )
+          printf 'OpenWrt SDK: %s\nArchitecture: %s\nCommit: %s\n' \
+            "$SDK_RELEASE" "$PACKAGE_ARCH" "$SOURCE_COMMIT" > dist/BUILD-INFO.txt
+          ls -lh dist/
+
+      - name: Upload APK build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: mentohust-apk-${{ matrix.arch }}-openwrt-${{ needs.prepare.outputs.release }}
+          path: dist/
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload diagnostic build logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mentohust-apk-logs-${{ matrix.arch }}-openwrt-${{ needs.prepare.outputs.release }}
+          path: logs/
+          if-no-files-found: ignore
+          retention-days: 7
