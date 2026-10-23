@@ -22,5 +22,10 @@
 
 --------------
 
+## 认证文件上传
+
+在 LuCI 的 **服务 → MentoHUST** 页面选择并上传 `8021x.exe`、`SuConfig.dat` 或 `W32N55.dll`。文件会保存到 `/etc/mentohust/`；上传同名文件会先提示确认再覆盖。其他文件名会被拒绝。
+
+
 ![10 0 0 1_cgi-bin_luci_admin_services_mentohust](https://user-images.githubusercontent.com/16485166/219599380-2a433cf3-e035-414d-a402-bea587d3a755.png)
 

@@ -49,7 +49,7 @@ define Build/Compile
 endef
 
 define Package/mentohust/install
-	$(INSTALL_DIR) $(1)/usr/sbin $(1)/etc/config $(1)/etc/init.d
+	$(INSTALL_DIR) $(1)/usr/sbin $(1)/etc/config $(1)/etc/init.d $(1)/etc/mentohust
 	$(INSTALL_BIN) ./files/mentohust.init $(1)/etc/init.d/mentohust
 	$(INSTALL_CONF) ./files/mentohust.config $(1)/etc/config/mentohust
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/mentohust $(1)/usr/sbin/

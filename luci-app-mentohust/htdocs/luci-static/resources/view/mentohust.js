@@ -3,6 +3,7 @@
 'require poll';
 'require rpc';
 'require tools.widgets as widgets';
+'require request';
 'require uci';
 'require view';
 
@@ -34,6 +35,44 @@ function renderStatus(isRunning) {
 
 	return renderHTML;
 }
+
+var authFileNames = ['8021x.exe', 'SuConfig.dat', 'W32N55.dll'];
+
+function uploadAuthFile(file, status, button) {
+	if (!file) {
+		status.textContent = _('Choose a file first.');
+		return Promise.resolve();
+	}
+
+	if (authFileNames.indexOf(file.name) === -1) {
+		status.textContent = _('Unsupported filename: %s').format(file.name);
+		return Promise.resolve();
+	}
+
+	if (!confirm(_('Upload %s to /etc/mentohust? Existing file will be replaced.').format(file.name)))
+		return Promise.resolve();
+
+	var data = new FormData();
+	data.append('sessionid', L.env.sessionid);
+	data.append('filename', '/etc/mentohust/' + file.name);
+	data.append('filedata', file);
+
+	button.disabled = true;
+	status.textContent = _('Uploading %s...').format(file.name);
+
+	return request.post(`${L.env.cgi_base}/cgi-upload`, data).then(function (response) {
+		var result = response.json();
+		if (result && result.failure)
+			throw new Error(result.message || _('Upload failed.'));
+
+		status.textContent = _('Uploaded %s').format(file.name);
+	}).catch(function (error) {
+		status.textContent = _('Upload failed: %s').format(error.message);
+	}).finally(function () {
+		button.disabled = false;
+	});
+}
+
 
 return view.extend({
 	render: function() {
@@ -138,6 +177,28 @@ return view.extend({
 			_('Default 0.00，indicating compatibility with xrgsu'));
 		o.default = '0.00';
 		o.rmempty = false;
+
+		o = s.option(form.DummyValue, 'auth_files', _('Authentication files'),
+			_('Upload 8021x.exe, SuConfig.dat, or W32N55.dll to /etc/mentohust. Same-name files are replaced.'));
+		o.renderWidget = function() {
+			var fileInput = E('input', {
+				'type': 'file',
+				'accept': '.exe,.dat,.dll'
+			});
+			var status = E('span', { 'class': 'cbi-value-description' });
+			var uploadButton;
+
+			uploadButton = E('button', {
+				'type': 'button',
+				'class': 'btn cbi-button cbi-button-action',
+				'click': function() {
+					return uploadAuthFile(fileInput.files[0], status, uploadButton);
+				}
+			}, _('Upload'));
+
+			return E('div', { 'class': 'mentohust-file-upload' }, [ fileInput, uploadButton, status ]);
+		};
+
 
 		return m.render();
 	}

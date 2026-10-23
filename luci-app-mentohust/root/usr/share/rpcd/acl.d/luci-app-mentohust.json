@@ -1,6 +1,6 @@
 {
 	"luci-app-mentohust": {
-		"description": "Grant UCI access for luci-app-mentohust",
+		"description": "Grant UCI access and restricted authentication-file uploads for luci-app-mentohust",
 		"read": {
 			"ubus": {
 				"service": [ "list" ]
@@ -8,6 +8,12 @@
 			"uci": [ "mentohust" ]
 		},
 		"write": {
+			"cgi-io": [ "upload" ],
+			"file": {
+				"/etc/mentohust/8021x.exe": [ "write" ],
+				"/etc/mentohust/SuConfig.dat": [ "write" ],
+				"/etc/mentohust/W32N55.dll": [ "write" ]
+			},
 			"uci": [ "mentohust" ]
 		}
 	}

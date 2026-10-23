@@ -1,3 +1,8 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
 msgid "MentoHUST"
 msgstr "锐捷认证"
 
@@ -99,3 +104,30 @@ msgstr "客户端版本号"
 
 msgid "Default 0.00，indicating compatibility with xrgsu"
 msgstr "默认 0.00，表示兼容 xrgsu"
+
+msgid "Authentication files"
+msgstr "认证文件"
+
+msgid "Upload 8021x.exe, SuConfig.dat, or W32N55.dll to /etc/mentohust. Same-name files are replaced."
+msgstr "上传 8021x.exe、SuConfig.dat 或 W32N55.dll 到 /etc/mentohust。同名文件会被替换。"
+
+msgid "Choose a file first."
+msgstr "请先选择文件。"
+
+msgid "Unsupported filename: %s"
+msgstr "不支持的文件名：%s"
+
+msgid "Upload %s to /etc/mentohust? Existing file will be replaced."
+msgstr "将 %s 上传到 /etc/mentohust？如果已存在同名文件，将被替换。"
+
+msgid "Uploading %s..."
+msgstr "正在上传 %s..."
+
+msgid "Uploaded %s"
+msgstr "已上传 %s"
+
+msgid "Upload failed."
+msgstr "上传失败。"
+
+msgid "Upload failed: %s"
+msgstr "上传失败：%s"
