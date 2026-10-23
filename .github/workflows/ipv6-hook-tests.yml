@@ -22,5 +22,8 @@ jobs:
           sh -n mentohust/files/mentohust-ipv6-up
           sh -n tests/test-ipv6-hook.sh
           sh -n mentohust/files/mentohust.init
+      - name: Check MentoHUST core C syntax
+        run: |
+          cc -std=gnu99 -fsyntax-only -DNO_NOTIFY -Wno-incompatible-pointer-types -Imentohust/src mentohust/src/mentohust.c mentohust/src/myconfig.c
       - name: Test DHCPv6 post-auth hook
         run: sh tests/test-ipv6-hook.sh
