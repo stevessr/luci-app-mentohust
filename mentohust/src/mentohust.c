@@ -16,6 +16,8 @@
 #include "dlfunc.h"
 
 #include <signal.h>
+#include <errno.h>
+#include <sys/wait.h>
 #include <string.h>
 #include <stdlib.h>
 #include <netinet/in.h>
@@ -26,6 +28,7 @@ extern volatile int state;
 extern u_char *fillBuf;
 extern const u_char *capBuf;
 extern unsigned startMode, dhcpMode, maxFail;
+extern char authHook[];
 extern u_char destMAC[];
 extern int lockfd;
 #ifndef NO_NOTIFY
@@ -37,6 +40,7 @@ extern u_char gateMAC[];
 #endif
 
 static void exit_handle(void);	/* 退出回调 */
+static int runAuthHook(void);	/* EAP 认证成功后的可选钩子 */
 static void sig_handle(int sig);	/* 信号回调 */
 static void pcap_handle(u_char *user, const struct pcap_pkthdr *h, const u_char *buf);	/* pcap_loop回调 */
 static void showRuijieMsg(const u_char *buf, unsigned bufLen);	/* 显示锐捷服务器提示信息 */
@@ -64,6 +68,35 @@ int main(int argc, char **argv)
 #endif
 	}
 	exit(EXIT_FAILURE);
+}
+
+/* Execute an explicitly configured executable, never a shell command.
+ * The hook does not change authentication outcome if it fails.
+ */
+static int runAuthHook(void)
+{
+	pid_t child, ret;
+	int status = 0;
+
+	if (!authHook[0])
+		return 0;
+	child = fork();
+	if (child == 0) {
+		execl(authHook, authHook, (char *)NULL);
+		_exit(127);
+	}
+	if (child < 0) {
+		perror("!! 无法启动认证成功钩子");
+		return -1;
+	}
+	do {
+		ret = waitpid(child, &status, 0);
+	} while (ret < 0 && errno == EINTR);
+	if (ret < 0 || !WIFEXITED(status) || WEXITSTATUS(status) != 0) {
+		fprintf(stderr, "!! 认证成功钩子执行失败: %s\n", authHook);
+		return -1;
+	}
+	return 0;
 }
 
 static void exit_handle(void)
@@ -110,6 +143,10 @@ static void sig_handle(int sig)
 static void pcap_handle(u_char *user, const struct pcap_pkthdr *h, const u_char *buf)
 {
 	static unsigned failCount = 0;
+	static int hookTriggered = 0;
+	/* A fresh EAP exchange must be allowed to start IPv6 again. */
+	if (state == ID_START || state == ID_IDENTITY || state == ID_CHALLENGE)
+		hookTriggered = 0;
 #ifndef NO_ARP
 	if (buf[0x0c]==0x88 && buf[0x0d]==0x8e) {
 #endif
@@ -129,6 +166,7 @@ static void pcap_handle(u_char *user, const struct pcap_pkthdr *h, const u_char 
 		else if (buf[0x0F]==0x00 && buf[0x12]==0x01 && buf[0x16]==0x04)	/* 验证密码 */
 			switchState(ID_CHALLENGE);
 		else if (buf[0x0F]==0x00 && buf[0x12]==0x03) {	/* 认证成功 */
+			unsigned dhcpAtSuccess = dhcpMode;
 			printf(">> 认证成功!\n");
 			failCount = 0;
 			if (!(startMode%3 == 2)) {
@@ -141,6 +179,11 @@ static void pcap_handle(u_char *user, const struct pcap_pkthdr *h, const u_char 
 				switchState(ID_WAITECHO);
 			else
 				switchState(ID_ECHO);
+			/* Mode 1 performs a second EAP exchange after IPv4 DHCP. */
+			if (dhcpAtSuccess != 1 && !hookTriggered) {
+				hookTriggered = 1;
+				(void)runAuthHook();
+			}
 		}
 		else if (buf[0x0F]==0x00 && buf[0x12]==0x01 && buf[0x16]==0x02)	/* 显示赛尔提示信息 */
 			showCernetMsg(buf);

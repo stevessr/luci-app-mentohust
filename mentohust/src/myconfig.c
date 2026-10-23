@@ -54,6 +54,7 @@ char password[ACCOUNT_SIZE] = "";	/* 密码 */
 char nic[NIC_SIZE] = "";	/* 网卡名 */
 char dataFile[MAX_PATH] = "";	/* 数据文件 */
 char dhcpScript[MAX_PATH] = "";	/* DHCP脚本 */
+char authHook[MAX_PATH] = "";	/* 认证成功后执行的程序，默认为禁用 */
 u_int32_t ip = 0;	/* 本机IP */
 u_int32_t mask = 0;	/* 子网掩码 */
 u_int32_t gateway = 0;	/* 网关 */
@@ -248,6 +249,7 @@ static int readFile(int *daemonMode)
 	getString(buf, "MentoHUST", "Nic", "", nic, sizeof(nic));
 	getString(buf, "MentoHUST", "Datafile", "", dataFile, sizeof(dataFile));
 	getString(buf, "MentoHUST", "DhcpScript", "", dhcpScript, sizeof(dhcpScript));
+	getString(buf, "MentoHUST", "AuthHook", "", authHook, sizeof(authHook));
 	getString(buf, "MentoHUST", "Version", "", tmp, sizeof(tmp));
 	if (strlen(tmp) >= 3) {
 		unsigned ver[2];
@@ -313,6 +315,8 @@ static void readArg(char argc, char **argv, int *saveFlag, int *exitFlag, int *d
 				strncpy(dataFile, str+2, sizeof(dataFile)-1);
 			else if (c == 'c')
 				strncpy(dhcpScript, str+2, sizeof(dhcpScript)-1);
+			else if (c == 'q')
+				strncpy(authHook, str+2, sizeof(authHook)-1);
 			else if (c=='v' && strlen(str+2)>=3) {
 				unsigned ver[2];
 				if (sscanf(str+2, "%u.%u", ver, ver+1) != EOF) {
@@ -385,6 +389,7 @@ static void showHelp(const char *fileName)
 		"\t-v 客户端版本号[默认0.00表示兼容xrgsu]\n"
 		"\t-f 自定义数据文件[默认不使用]\n"
 		"\t-c DHCP脚本[默认dhclient]\n"
+		"\t-q 认证成功后执行的程序路径[默认禁用]\n"
 		"例如:\t%s -uusername -ppassword -neth0 -i192.168.0.1 -m255.255.255.0 -g0.0.0.0 -s0.0.0.0 -o0.0.0.0 -t8 -e30 -r15 -a0 -d1 -b0 -v4.10 -fdefault.mpf -cdhclient\n"
 		"注意：使用时请确保是以root权限运行！\n\n";
 	printf(helpString, fileName, fileName);
@@ -497,6 +502,7 @@ static void saveConfig(int daemonMode)
 		buf[0] = '\0';
 	}
 	setString(&buf, "MentoHUST", "DhcpScript", dhcpScript);
+	setString(&buf, "MentoHUST", "AuthHook", authHook);
 	setString(&buf, "MentoHUST", "DataFile", dataFile);
 	if (bufType != 0) {
 		char ver[10];
