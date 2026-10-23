@@ -63,7 +63,7 @@ jobs:
               arches='["x86_64","aarch64_generic","aarch64_cortex-a53","aarch64_cortex-a72","arm_cortex-a7_neon-vfpv4","mips_24kc","mipsel_24kc"]'
               ;;
             x86_64|aarch64_generic|aarch64_cortex-a53|aarch64_cortex-a72|arm_cortex-a7_neon-vfpv4|mips_24kc|mipsel_24kc)
-              arches="[\\"$REQUESTED_ARCH\\"]"
+              arches="[\"$REQUESTED_ARCH\"]"
               ;;
             *) echo "::error::Unsupported package architecture: $REQUESTED_ARCH"; exit 1 ;;
           esac
