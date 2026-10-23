@@ -138,6 +138,13 @@ return view.extend({
 		o.default = '0.0.0.0';
 		o.rmempty = false;
 
+		// EAPOL has no IP address family. IPv6 is configured separately with netifd.
+		o = s.option(form.Value, 'ipv6_network', _('IPv6 network (DHCPv6 / RA)'),
+			_('Optional OpenWrt network name (for example wan6, protocol dhcpv6). Start it after EAP authentication succeeds. Configure the network on the same physical device as the authenticated interface.'));
+		o.placeholder = 'wan6';
+		o.datatype = 'uciname';
+		o.rmempty = true;
+
 		o = s.option(form.Value, 'timeout', _('Authentication Timeout (Seconds)'));
 		o.default = '8';
 		o.rmempty = false;

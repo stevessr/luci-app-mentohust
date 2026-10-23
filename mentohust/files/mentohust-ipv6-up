@@ -1,0 +1,26 @@
+#!/bin/sh
+# Triggered only after the final IEEE 802.1X/EAP-Success packet.
+# IPv6 address negotiation is delegated to OpenWrt netifd / odhcp6c.
+network="$(uci -q get mentohust.config.ipv6_network 2>/dev/null)" || exit 0
+[ -n "$network" ] || exit 0
+
+# Never interpret a UCI value as a shell fragment or an ifup option.
+case "$network" in
+	*[!A-Za-z0-9_]*)
+		logger -t mentohust "Invalid IPv6 network name: $network"
+		exit 1
+		;;
+esac
+
+proto="$(uci -q get "network.$network.proto" 2>/dev/null)" || proto=""
+if [ "$proto" != "dhcpv6" ]; then
+	logger -t mentohust "IPv6 network $network must use proto dhcpv6 (found: $proto)"
+	exit 1
+fi
+
+if ifup "$network"; then
+	logger -t mentohust "Started IPv6 network $network after EAP success"
+else
+	logger -t mentohust "Failed to start IPv6 network $network"
+	exit 1
+fi

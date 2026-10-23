@@ -131,3 +131,9 @@ msgstr "上传失败。"
 
 msgid "Upload failed: %s"
 msgstr "上传失败：%s"
+
+msgid "IPv6 network (DHCPv6 / RA)"
+msgstr "IPv6 网络接口（DHCPv6 / RA）"
+
+msgid "Optional OpenWrt network name (for example wan6, protocol dhcpv6). Start it after EAP authentication succeeds. Configure the network on the same physical device as the authenticated interface."
+msgstr "可选的 OpenWrt 网络接口名（例如 wan6，协议为 dhcpv6）。仅在 EAP 认证成功后启动。此网络应使用与认证接口相同的物理设备。"
